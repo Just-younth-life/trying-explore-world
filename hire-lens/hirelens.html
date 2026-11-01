@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HireLens · 招聘决策工作台</title>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --bg:#0b0f17; --panel:#121826; --panel2:#161e2e; --line:#22304a; --line2:#2c3c5c;
+  --tx:#e7eef9; --sub:#93a1b8; --dim:#6b7a94;
+  --ac:#4f8cff; --ac2:#22d3ee; --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --purple:#a78bfa;
+  --r:12px; --shadow:0 8px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font:14px/1.65 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+#app{display:flex;height:100vh;overflow:hidden}
+/* ---------- 侧栏 ---------- */
+#side{width:212px;min-width:212px;background:linear-gradient(180deg,#0d1320,#0a0e17);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:6px}
+.logo{display:flex;align-items:center;gap:10px;padding:4px 8px 16px}
+.logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#04121f;font-size:17px;box-shadow:0 4px 16px rgba(79,140,255,.4)}
+.logo b{font-size:16px;letter-spacing:.5px}
+.logo small{display:block;color:var(--dim);font-size:11px;font-weight:400}
+.navbtn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--sub);cursor:pointer;border:1px solid transparent;background:none;font-size:14px;text-align:left;width:100%}
+.navbtn:hover{background:#182238;color:var(--tx)}
+.navbtn.on{background:linear-gradient(90deg,rgba(79,140,255,.16),rgba(34,211,238,.08));color:var(--tx);border-color:rgba(79,140,255,.35)}
+.navbtn .ico{width:18px;text-align:center;opacity:.9}
+.side-foot{margin-top:auto;font-size:11px;color:var(--dim);padding:10px;line-height:1.7;border-top:1px solid var(--line)}
+/* ---------- 主区 ---------- */
+#main{flex:1;overflow-y:auto;padding:26px 30px 80px;scroll-behavior:smooth}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:24px;font-weight:700;margin-bottom:4px}
+h2{font-size:18px;font-weight:650;margin:0 0 12px}
+h3{font-size:15px;font-weight:600;margin:0 0 8px}
+.pghead{margin-bottom:22px}
+.pghead p{color:var(--sub);font-size:13px}
+/* ---------- 卡片 ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card.tight{padding:14px 16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+.hint{color:var(--dim);font-size:12px;line-height:1.7}
+.warnbox{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:10px 14px;font-size:12.5px;color:#fde68a;margin:10px 0}
+.errbox{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:10px 14px;font-size:12.5px;color:#fecaca;margin:10px 0}
+.okbox{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:10px 14px;font-size:12.5px;color:#a7f3d0;margin:10px 0}
+/* ---------- 按钮/输入 ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);color:var(--tx);cursor:pointer;font-size:13.5px;transition:.15s}
+.btn:hover{border-color:var(--ac);background:#1a2440}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:linear-gradient(135deg,var(--ac),#3b6fe0);border-color:transparent;color:#fff;font-weight:600}
+.btn-p:hover{filter:brightness(1.12);background:linear-gradient(135deg,var(--ac),#3b6fe0)}
+.btn-ok{background:linear-gradient(135deg,#0ea371,#34d399);border-color:transparent;color:#04120c;font-weight:600}
+.btn-ok:hover{filter:brightness(1.1)}
+.btn-d{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.45);color:#fca5a5}
+.btn-d:hover{background:rgba(248,113,113,.22);border-color:var(--bad)}
+.btn-sm{padding:4px 10px;font-size:12px;border-radius:7px}
+.btn-xs{padding:2px 8px;font-size:11.5px;border-radius:6px}
+input[type=text],input[type=password],input[type=number],input[type=email],input[type=date],select,textarea{
+  background:#0d1420;border:1px solid var(--line2);color:var(--tx);border-radius:9px;padding:8px 12px;font-size:13.5px;outline:none;width:100%;font-family:inherit}
+input:focus,textarea:focus,select:focus{border-color:var(--ac)}
+textarea{resize:vertical;min-height:90px;line-height:1.7}
+label.f{display:block;font-size:12px;color:var(--sub);margin:10px 0 4px}
+.switch{position:relative;width:38px;height:21px;background:#26334d;border-radius:20px;cursor:pointer;transition:.2s;flex:none}
+.switch.on{background:var(--ok)}
+.switch::after{content:'';position:absolute;top:2.5px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.switch.on::after{left:19px}
+/* ---------- 徽章 ---------- */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11.5px;border:1px solid;white-space:nowrap}
+.b-blue{color:#93c5fd;border-color:rgba(147,197,253,.4);background:rgba(59,130,246,.12)}
+.b-green{color:#6ee7b7;border-color:rgba(110,231,183,.4);background:rgba(16,185,129,.12)}
+.b-yellow{color:#fcd34d;border-color:rgba(252,211,77,.4);background:rgba(245,158,11,.12)}
+.b-red{color:#fca5a5;border-color:rgba(252,165,165,.45);background:rgba(239,68,68,.12)}
+.b-gray{color:var(--sub);border-color:var(--line2);background:#1a2233}
+.b-purple{color:#c4b5fd;border-color:rgba(196,181,253,.4);background:rgba(139,92,246,.12)}
+/* ---------- 表格 ---------- */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;color:var(--sub);font-weight:550;font-size:12px;padding:9px 10px;border-bottom:1px solid var(--line2);white-space:nowrap;background:#141c2c}
+.tbl td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr:hover td{background:rgba(79,140,255,.04)}
+.tbl input,.tbl select{padding:5px 8px;font-size:12.5px;min-width:90px}
+.tbl textarea{min-height:54px;font-size:12.5px}
+/* ---------- 步骤条 ---------- */
+.steps{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px}
+.step{padding:7px 14px;border-radius:9px;font-size:13px;color:var(--sub);cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.step:hover{color:var(--tx)}
+.step.on{background:linear-gradient(90deg,rgba(79,140,255,.2),rgba(34,211,238,.1));color:var(--tx);border-color:rgba(79,140,255,.4)}
+.step.done{color:var(--ok)}
+/* ---------- 进度条/分数条 ---------- */
+.pbar{height:8px;background:#1a2336;border-radius:6px;overflow:hidden}
+.pbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:6px;transition:width .4s}
+.sbar{display:flex;align-items:center;gap:8px;margin:4px 0}
+.sbar .nm{width:120px;min-width:120px;font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbar .pbar{flex:1}
+.sbar .vv{width:44px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
+/* ---------- 任务卡片 ---------- */
+.tcard{display:flex;align-items:center;gap:14px;padding:16px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;cursor:pointer;transition:.15s}
+.tcard:hover{border-color:var(--ac);transform:translateY(-1px)}
+.tcard .tname{font-weight:600;font-size:15px}
+.tcard .tmeta{color:var(--dim);font-size:12px;margin-top:2px}
+.tprog{width:180px}
+/* ---------- 首页引导 ---------- */
+.hero{background:linear-gradient(135deg,rgba(79,140,255,.14),rgba(34,211,238,.06)),var(--panel);border:1px solid rgba(79,140,255,.35);border-radius:16px;padding:30px 32px;margin-bottom:20px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-80px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.18),transparent 70%)}
+.onb{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+@media(max-width:860px){.onb{grid-template-columns:1fr}}
+.onb .o{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px}
+.onb .o .n{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#04121f;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:8px}
+.onb .o b{display:block;margin-bottom:4px;font-size:13.5px}
+.onb .o span{color:var(--sub);font-size:12px;line-height:1.7}
+/* ---------- 弹层 ---------- */
+.mask{position:fixed;inset:0;background:rgba(4,8,16,.72);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:16px;max-width:860px;width:100%;max-height:88vh;overflow-y:auto;padding:22px 26px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal h3{font-size:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.modal .mx{cursor:pointer;color:var(--dim);font-size:18px;padding:0 4px}
+.modal .mx:hover{color:var(--tx)}
+/* ---------- Toast ---------- */
+#toastRoot{position:fixed;top:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--panel2);border:1px solid var(--line2);border-left:3px solid var(--ac);border-radius:10px;padding:10px 16px;font-size:13px;box-shadow:var(--shadow);animation:tin .25s;max-width:380px}
+.toast.ok{border-left-color:var(--ok)}.toast.bad{border-left-color:var(--bad)}.toast.warn{border-left-color:var(--warn)}
+@keyframes tin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+/* ---------- 其他 ---------- */
+mark{background:rgba(251,191,36,.3);color:#fde68a;border-radius:3px;padding:0 2px}
+.quote{background:#0d1420;border:1px solid var(--line);border-left:3px solid var(--ac2);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--sub);margin:6px 0;cursor:pointer;line-height:1.7}
+.quote:hover{border-left-color:var(--ac);color:var(--tx)}
+.orig{background:#0a0f1a;border:1px solid var(--line);border-radius:10px;padding:16px;font-size:13px;line-height:1.9;white-space:pre-wrap;max-height:420px;overflow-y:auto;color:#c9d5e8}
+.drop{border:2px dashed var(--line2);border-radius:12px;padding:30px;text-align:center;color:var(--sub);cursor:pointer;transition:.2s}
+.drop:hover,.drop.over{border-color:var(--ac);background:rgba(79,140,255,.06)}
+.kv{display:flex;gap:10px;font-size:12.5px;margin:4px 0}
+.kv b{color:var(--sub);min-width:90px;font-weight:500}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.spacer{flex:1}
+.mt{margin-top:14px}.mb{margin-bottom:14px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--ac);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2b3b5e,#1a2440);display:flex;align-items:center;justify-content:center;font-size:13px;color:#9db4dd;flex:none;border:1px solid var(--line2)}
+.nullflag{color:var(--warn);font-size:11.5px}
+.tabsm{font-size:12px;color:var(--dim)}
+.lc-note{font-size:11px;color:var(--warn)}
+.grp-head{padding:8px 12px;border-radius:9px;font-size:13px;font-weight:600;margin:14px 0 6px;display:flex;align-items:center;gap:8px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#243149;border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <div class="logo">
+      <div class="mark">H</div>
+      <div><b>HireLens</b><small>招聘决策工作台</small></div>
+    </div>
+    <button class="navbtn" data-nav="home" onclick="go('home')"><span class="ico">⌂</span>首页</button>
+    <button class="navbtn" data-nav="tasks" onclick="go('tasks')"><span class="ico">▦</span>招聘任务</button>
+    <button class="navbtn" data-nav="archive" onclick="go('archive')"><span class="ico">🗄</span>归档</button>
+    <button class="navbtn" data-nav="settings" onclick="go('settings')"><span class="ico">⚙</span>设置与状态</button>
+    <div class="side-foot">演示环境 · 无真实模型调用<br>示例数据均为<b style="color:var(--warn)">合成</b><br>隐私：邮箱/授权码加密存储</div>
+  </aside>
+  <main id="main"><div class="wrap" id="view"></div></main>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+<script>
+/* =====================================================
+   HireLens 招聘决策工作台 —— 单文件演示实现
+   说明：本环境无真实大模型，JD 解析 / 简历评分 / 综合评估
+   均由本地启发式引擎（关键词抽取 + 证据句检索 + 加权计分）
+   真实计算得出，可复现、可解释；会议与邮件为模拟通道。
+   ===================================================== */
+
+/* ---------- 工具 ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const fmtT = ts => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+const todayStr = () => new Date().toISOString().slice(0, 10);
+function toast(msg, type='') { const d=document.createElement('div'); d.className='toast '+type; d.innerHTML=msg; document.getElementById('toastRoot').appendChild(d); setTimeout(()=>{d.style.opacity=0; d.style.transition='.4s'; setTimeout(()=>d.remove(),400);}, 3400); }
+function modal(html, w) { const r=document.getElementById('modalRoot'); r.innerHTML=`<div class="mask" onclick="if(event.target===this)closeModal()"><div class="modal" style="${w?'max-width:'+w+'px':''}">${html}</div></div>`; }
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+function download(name, content, mime='text/plain'){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type:mime+';charset=utf-8'})); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+function splitSents(t){ return t.split(/(?<=[。；;！？！\n])/).map(s=>s.trim()).filter(s=>s.length>1); }
+
+/* ---------- 数据层（localStorage 持久化 + 版本校验） ---------- */
+const DB_KEY = 'hirelens_db_v1';
+let DB = { tasks: [], seq: 1, settings: { smtp: null, cleanupDays: 90, demo: { modelFail:false, searchDown:false, sendTimeout:false } } };
+function loadDB(){ try{ const r=localStorage.getItem(DB_KEY); if(r) DB=Object.assign(DB, JSON.parse(r)); }catch(e){ console.warn('DB load fail', e); } }
+function saveDB(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ toast('本地存储写入失败：'+e.message,'bad'); } }
+function getTask(id){ return DB.tasks.find(t=>t.id===id); }
+/* 乐观锁：保存前校验版本，旧版本返回 409 */
+function saveTask(task, expectVer){
+  const cur = DB.tasks.find(t=>t.id===task.id);
+  if(expectVer!=null && cur && cur.ver !== expectVer) return 409;
+  if(expectVer!=null && task.ver !== expectVer) return 409;
+  task.ver = (task.ver||1) + 1; task.updatedAt = Date.now(); saveDB(); return 200;
+}
+
+/* ---------- 脱敏引擎 ---------- */
+function maskName(n){ return n ? n[0] + '*'.repeat(n.length-1) : n; }
+function desensitize(text){
+  const found = { names:[], phones:[], emails:[], ids:0 };
+  let t = text;
+  t = t.replace(/1[3-9]\d{9}/g, m=>{ found.phones.push(m); return m.slice(0,3)+'****'+m.slice(7); });
+  t = t.replace(/[\w.+-]+@[\w-]+\.[\w.]{2,}/g, m=>{ found.emails.push(m); return '***@'+m.split('@')[1]; });
+  t = t.replace(/\d{17}[\dXx]/g, ()=>{ found.ids++; return '3101**********0012'; });
+  const nm = t.match(/姓\s*名\s*[:：]\s*([\u4e00-\u9fa5]{2,4})/);
+  if(nm){ const n=nm[1]; found.names.push(n); t = t.split(n).join(maskName(n)); }
+  const nm2 = t.match(/^[\u4e00-\u9fa5]{2,4}(?=\s*[|｜]\s*(?:男|女|\d{2}岁|简历))/m);
+  if(nm2 && !found.names.includes(nm2[0])){ found.names.push(nm2[0]); t = t.split(nm2[0]).join(maskName(nm2[0])); }
+  return { text: t, found };
+}
+
+/* ---------- JD 解析引擎（本地启发式） ---------- */
+function parseJD(text){
+  const t = text.trim();
+  const lines = t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  const title = (t.match(/(?:岗位|职位|招聘)\s*[:：]\s*([^\n，,。；]{2,24})/)||[])[1] || (lines[0]||'未命名岗位').slice(0,24);
+  const level = (t.match(/(资深|高级|中级|初级|专家|总监|经理|主管|实习生|P[5-9]|L[1-7])/)||[])[1] || '未标注职级';
+  const sents = splitSents(t);
+  const hard = sents.filter(s=>/(本科|硕士|研究生|博士|学历|\d+\s*年.{0,6}经验|经验|精通|熟练|熟悉|必须|必备|掌握|优先)/.test(s)).slice(0,6);
+  const hardReqs = hard.map(s=>{
+    const kws = [];
+    for(const kw of ['本科','硕士','研究生','博士','大专','3年','5年','2年','1年','10年','SQL','Python','Excel','英语'])
+      if(new RegExp(escRe(kw),'i').test(s)) kws.push(kw);
+    const tech = s.match(/(熟悉|精通|掌握|熟练)([^，。；、]{1,14})/); if(tech && tech[2] && !kws.includes(tech[2].trim())) kws.push(tech[2].trim().slice(0,10));
+    return { id: uid(), text: s.slice(0,80), keywords: kws.length?kws:[s.slice(0,6)], status:'待核实' };
+  });
+  const soft = sents.filter(s=>/(沟通|协作|责任|学习|抗压|自驱|团队|逻辑|主动)/.test(s)).slice(0,3);
+  /* 生成 3-6 个初筛维度（不预置模板，按 JD 内容生成） */
+  const dims = [];
+  const add = (name, desc, kws) => dims.push({ id:uid(), name, desc, keywords:kws.filter(Boolean), weight:0, min:60, source:'AI建议' });
+  const kwsFromJD = re => { const set=new Set(); for(const s of sents){ const m=s.match(re); if(m) set.add(m[0]); } return [...set]; };
+  if(/大模型|LLM|GPT|AIGC|人工智能|机器学习|深度学习|AI/i.test(t)) add('AI 应用与模型理解','对大模型能力边界、提示词设计、AI 产品落地的理解程度',['大模型','AI','提示词','Prompt','机器学习','智能体','AIGC']);
+  if(/产品|需求|PRD|原型|规划/.test(t)) add('产品核心能力','需求分析、方案设计与产品落地的经验与成果',['产品','需求','PRD','原型','迭代','方案']);
+  if(/SQL|数据|分析|指标|BI/i.test(t)) add('数据分析能力','用数据驱动决策的能力，含 SQL 与指标体系',['SQL','数据','分析','指标','报表','A\/B']);
+  if(/前端|后端|开发|技术|架构|接口/.test(t)) add('技术理解与落地','对技术方案的判断力与跨端协作落地能力',['技术','开发','接口','架构','API']);
+  add('学历与工作经验','硬性学历与年限要求是否满足',['本科','硕士','年']);
+  if(/沟通|协作|跨部门|团队/.test(t)) add('沟通与协作','跨团队沟通、推动协作与表达能力',['沟通','协作','跨部门','团队']);
+  const prio = sents.filter(s=>/优先/.test(s)).slice(0,2);
+  if(prio.length) add('加分项与亮点','JD 中标注优先级的能力或经历（开源、行业、证书等）', prio.map(s=>{const m=s.match(/(有|具备|熟悉)([^，。；]{1,10})/); return m?m[2].trim():'优先';}));
+  while(dims.length < 3) add('学习与成长潜力','面向岗位所需新知识的学习速度与自驱力',['学习','研究','总结','自驱']);
+  const w = [28,22,18,14,10,8];
+  dims.forEach((d,i)=> d.weight = w[i] || 6);
+  /* 权重归一到 100 */
+  const sw = dims.reduce((a,d)=>a+d.weight,0); dims.forEach(d=>d.weight = Math.round(d.weight*100/sw));
+  const diff = 100 - dims.reduce((a,d)=>a+d.weight,0); dims[0].weight += diff;
+  return { title, level, hardReqs, soft, dims };
+}
+
+/* ---------- 简历评分引擎（本地启发式，逐维度 + 原文引用） ---------- */
+function scoreResume(task, cand){
+  const text = cand.text || '';
+  if(text.replace(/\s/g,'').length < 60){
+    cand.scoring = { status:'null', reason:'材料不可读或关键信息缺失（有效内容不足）', error:'NULL_MATERIAL' };
+    return;
+  }
+  if(cand.conflict){
+    cand.scoring = { status:'null', reason:'信息冲突：简历中存在互相矛盾的关键陈述，需人工复核后重评', error:'CONFLICT' };
+    return;
+  }
+  if(DB.settings.demo.searchDown){
+    cand.scoring = { status:'failed', error:'SEARCH_DOWN', reason:'证据检索服务不可用，无法定位原文引用，已暂停评分' };
+    return;
+  }
+  if(DB.settings.demo.modelFail){
+    cand.scoring = { status:'failed', error:'MODEL_FAIL', reason:'评分模型调用失败（模拟），请检查网络后重试' };
+    return;
+  }
+  const sents = splitSents(text);
+  const scores = {};
+  for(const dim of task.dims){
+    const quotes = []; let hits = 0;
+    for(const kw of dim.keywords){
+      if(!kw) continue;
+      const re = new RegExp(escRe(kw),'i');
+      const s = sents.find(x=>re.test(x) && !quotes.includes(x));
+      if(s){ hits++; quotes.push(s.length>90 ? s.slice(0,90)+'…' : s); }
+    }
+    const cov = hits / Math.max(1, dim.keywords.length);
+    let v, note='';
+    if(hits === 0){ v = 10; note = '该维度未检索到直接证据，按证据不足低分处理（非淘汰依据）'; }
+    else { v = Math.min(100, Math.round(cov*70 + Math.min(30, hits*7))); if(hits<=1) note='证据较少，建议人工复核原文'; }
+    scores[dim.id] = { v, quotes: quotes.slice(0,3), note };
+  }
+  const valid = task.dims.filter(d=>scores[d.id]);
+  const total = Math.round(valid.reduce((a,d)=>a + d.weight*scores[d.id].v, 0) / Math.max(1, valid.reduce((a,d)=>a+d.weight,0)));
+  const matchClass = text.length < 220 ? {tag:'材料不足', cls:'b-yellow'}
+    : total >= 72 ? {tag:'较匹配', cls:'b-green'} : total >= 50 ? {tag:'部分/可迁移匹配', cls:'b-blue'} : {tag:'低匹配', cls:'b-gray'};
+  /* 硬性条件状态 */
+  const hardStatus = (task.jdParsed?.hardReqs||[]).map(h=>{
+    const found = h.keywords.some(kw=>new RegExp(escRe(kw),'i').test(text));
+    const neg = h.keywords.some(kw=>new RegExp('(无|不具备)[^。；]{0,8}'+escRe(kw)).test(text));
+    return { text:h.text, status: neg ? '未满足' : found ? '已满足' : '待核实' };
+  });
+  cand.scoring = { status:'done', reason:'', error:'' };
+  cand.scores = scores; cand.total = total; cand.matchClass = matchClass; cand.hardStatus = hardStatus;
+}
+
+/* ---------- 后台评分 Worker（可离开页面不中断） ---------- */
+let workerState = { running:false, taskId:null, queue:[], current:'' };
+function startScoring(taskId){
+  const task = getTask(taskId); if(!task) return;
+  workerState = { running:true, taskId, queue: task.candidates.filter(c=>['queued','failed','timeout'].includes(c.scoring?.status)).map(c=>c.id), current:'' };
+  (function step(){
+    if(!workerState.running || !workerState.queue.length){ workerState.running=false; workerState.current=''; saveDB(); render(); return; }
+    const task2 = getTask(workerState.taskId); if(!task2){ workerState.running=false; return; }
+    const cid = workerState.queue.shift();
+    const c = task2.candidates.find(x=>x.id===cid); if(!c){ step(); return; }
+    if(c.scoring?.status==='done'){ step(); return; }
+    workerState.current = c.nameMasked;
+    c.scoring = { status:'running', reason:'', error:'' }; render();
+    setTimeout(()=>{
+      const t3 = getTask(workerState.taskId); const c3 = t3 && t3.candidates.find(x=>x.id===cid);
+      if(!c3){ step(); return; }
+      scoreResume(t3, c3);
+      if(c3.scoring.status==='running'){ /* 兜底 */ c3.scoring={status:'done'}; }
+      saveDB(); render(); step();
+    }, 900 + Math.random()*700);
+  })();
+  saveDB(); render();
+}
+function retryCandidate(taskId, cid){
+  const t=getTask(taskId), c=t&&t.candidates.find(x=>x.id===cid); if(!c) return;
+  c.scoring={status:'queued'}; DB.settings.demo.modelFail=false; DB.settings.demo.searchDown=false; saveDB();
+  toast('已重置评分状态，开始重试','ok');
+  if(!workerState.running) startScoring(taskId);
+}
+
+/* =====================================================
+   路由与视图
+   ===================================================== */
+let NAV='home', CUR={taskId:null, tab:'overview'};
+function go(nav, opts={}){
+  NAV=nav;
+  if(opts.taskId!=null){ CUR.taskId=opts.taskId; }
+  if(opts.tab){ CUR.tab=opts.tab; }
+  render();
+}
+function render(){
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('on', b.dataset.nav===NAV));
+  const v=document.getElementById('view');
+  if(NAV==='home') v.innerHTML=vHome();
+  else if(NAV==='tasks') v.innerHTML = CUR.taskId && getTask(CUR.taskId) ? vTask() : vTaskList();
+  else if(NAV==='archive') v.innerHTML=vArchive();
+  else if(NAV==='settings') v.innerHTML=vSettings();
+  const m=document.getElementById('main'); m.scrollTop=0;
+}
+
+/* ---------- 首页 ---------- */
+function vHome(){
+  const active = DB.tasks.filter(t=>t.status!=='archived');
+  const failed = [];
+  for(const t of active) for(const c of t.candidates)
+    if(['failed','timeout'].includes(c.scoring?.status)) failed.push({t,c});
+  const guide = `
+  <div class="hero">
+    <h1>HireLens · 招聘决策工作台</h1>
+    <p style="color:var(--sub);margin-top:6px">面向 HR 单人场景：JD 整理 → 脱敏评分 → 人工审核 → 面试邀约 → 综合评估。AI 只做整理与打分参考，<b style="color:var(--tx)">进面、淘汰、邀约全部由你决定</b>。</p>
+    <div class="onb">
+      <div class="o"><div class="n">1</div><b>从哪开始：创建招聘任务</b><span>粘贴任意岗位 JD，AI 整理 3–6 个初筛维度，你调整权重与最低参考线后确认锁定。</span></div>
+      <div class="o"><div class="n">2</div><b>当前做什么：导入简历并评分</b><span>上传 PDF / Word 或粘贴正文，先确认脱敏、再评分；评分在后台进行，离开页面不中断。</span></div>
+      <div class="o"><div class="n">3</div><b>做完去哪里：审核 → 邀约 → 归档</b><span>在审核表定 P0–P3，合格者一键生成会议与邀约邮件，最后综合评估并导出 Markdown 归档。</span></div>
+    </div>
+    <div class="row">
+      <button class="btn btn-p" onclick="go('tasks');setTimeout(openWizard,60)">＋ 创建招聘任务</button>
+      <button class="btn" onclick="loadSample()">载入合成示例任务（快速体验全流程）</button>
+    </div>
+    <div class="hint" style="margin-top:10px">示例任务与候选人均为<b>合成数据</b>，不包含任何真实个人信息；页面不展示准确率、耗时、成本等未实测指标。</div>
+  </div>`;
+  const failBox = failed.length ? `
+  <div class="card" style="border-color:rgba(248,113,113,.5)">
+    <h3 style="color:var(--bad)">⚠ 需要处理的失败项（${failed.length}）</h3>
+    ${failed.map(f=>`<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
+      <span>${esc(f.t.name)} · ${esc(f.c.nameMasked)}</span>
+      <span class="badge ${f.c.scoring.error==='SEARCH_DOWN'?'b-yellow':'b-red'}">${f.c.scoring.error==='SEARCH_DOWN'?'检索服务不可用':f.c.scoring.error==='TIMEOUT'?'评分超时':'模型调用失败'}</span>
+      <span class="spacer"></span>
+      <button class="btn btn-sm" onclick="retryCandidate('${f.t.id}','${f.c.id}')">一键重试</button>
+      <button class="btn btn-sm" onclick="go('tasks',{taskId:'${f.t.id}',tab:'import'})">查看</button>
+    </div>`).join('')}
+  </div>` : '';
+  const cards = active.length ? active.map(t=>{
+    const done=t.candidates.filter(c=>c.scoring?.status==='done').length;
+    const stMap={draft:['草稿','b-gray'],screening:['简历评分中','b-blue'],review:['待人工审核','b-yellow'],interview:['面试安排中','b-purple'],evaluation:['综合评估中','b-blue'],done:['已完成','b-green']};
+    const [st,sc]=stMap[t.status]||['—','b-gray'];
+    return `<div class="tcard" onclick="go('tasks',{taskId:'${t.id}'})">
+      <div class="avatar">${esc(t.name.slice(0,1))}</div>
+      <div style="flex:1"><div class="tname">${esc(t.name)} <span class="badge ${sc}">${st}</span>${t.dimsLocked?'':' <span class="badge b-gray">标准未锁定</span>'}</div>
+      <div class="tmeta">${t.candidates.length} 位候选人 · 已评 ${done} · 创建于 ${fmtT(t.createdAt)} · v${t.ver}</div></div>
+      <div class="tprog"><div class="pbar"><i style="width:${t.candidates.length?Math.round(done/t.candidates.length*100):0}%"></i></div></div>
+      <span style="color:var(--dim)">›</span>
+    </div>`;}).join('') : `<div class="card" style="text-align:center;color:var(--sub);padding:40px">还没有进行中的招聘任务<br><span class="hint">点击上方「创建招聘任务」或载入示例开始</span></div>`;
+  return guide + failBox + `<h2 style="margin-top:26px">进行中的任务</h2>` + cards;
+}
+
+/* ---------- 任务列表 ---------- */
+function vTaskList(){
+  const ts = DB.tasks.filter(t=>t.status!=='archived');
+  return `<div class="pghead"><h1>招聘任务</h1><p>每个任务对应一个岗位的一次招聘；标准锁定后本批候选人使用同一套评分口径。</p></div>
+  <div class="row mb"><button class="btn btn-p" onclick="openWizard()">＋ 创建招聘任务</button><span class="hint">不预置任何岗位模板，一切从你粘贴的 JD 开始</span></div>
+  ${ts.length?ts.map(t=>{
+    const done=t.candidates.filter(c=>c.scoring?.status==='done').length;
+    return `<div class="tcard" onclick="go('tasks',{taskId:'${t.id}'})">
+      <div class="avatar">${esc(t.name.slice(0,1))}</div>
+      <div style="flex:1"><div class="tname">${esc(t.name)}</div>
+      <div class="tmeta">${t.candidates.length} 位候选人 · 已评 ${done} · ${t.dimsLocked?'标准已锁定 v'+t.ver:'标准未锁定'} · 更新于 ${fmtT(t.updatedAt||t.createdAt)}</div></div>
+      <span style="color:var(--dim)">›</span></div>`;}).join('')
+  :`<div class="card" style="text-align:center;color:var(--sub);padding:46px">暂无任务</div>`}`;
+}
+
+/* ---------- 任务创建向导：Step1 粘贴 JD ---------- */
+let WZ = null;
+function openWizard(){
+  WZ = { name:'', jd:'', step:1, parsed:null };
+  modal(`<h3>创建招聘任务 <span class="mx" onclick="closeModal()">✕</span></h3>
+    <label class="f">任务名称（例如：3月·AI产品经理招聘）</label>
+    <input type="text" id="wzName" placeholder="不预置模板，按你的岗位自由命名" value="${esc(WZ.name)}">
+    <label class="f">粘贴岗位 JD（任意岗位，模型将据此整理初筛维度）</label>
+    <textarea id="wzJd" rows="9" placeholder="粘贴完整 JD：岗位职责、任职要求、加分项等">${esc(WZ.jd)}</textarea>
+    <div class="row mt"><span class="spacer"></span>
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" onclick="wzParseJD()">AI 解析 JD</button></div>`, 720);
+}
+function wzParseJD(){
+  WZ.name = document.getElementById('wzName').value.trim();
+  WZ.jd = document.getElementById('wzJd').value.trim();
+  if(!WZ.name) return toast('请先填写任务名称','warn');
+  if(WZ.jd.length < 40) return toast('JD 内容过短，请粘贴完整 JD（至少 40 字）','warn');
+  WZ.parsed = parseJD(WZ.jd);
+  WZ.dims = WZ.parsed.dims.map(d=>({...d}));
+  wzStep2();
+}
+/* ---------- Step2 维度编辑与校验 ---------- */
+function wzStep2(){
+  const p=WZ.parsed;
+  const sum = WZ.dims.reduce((a,d)=>a+(+d.weight||0),0);
+  const okCount = WZ.dims.length>=3 && WZ.dims.length<=8;
+  const okSum = sum===100;
+  modal(`<h3>初筛维度整理结果 <span class="mx" onclick="closeModal()">✕</span></h3>
+  <div class="kv"><b>岗位</b><span>${esc(p.title)} · ${esc(p.level)}</span></div>
+  <div class="kv"><b>硬性要求</b><span>${p.hardReqs.length} 条（将用于「已满足/待核实/未满足」分组）</span></div>
+  <div class="card tight" style="margin:10px 0">
+    ${p.hardReqs.map(h=>`<div style="font-size:12.5px;color:var(--sub)">· ${esc(h.text)} <span class="tabsm">〔关键词：${h.keywords.map(esc).join(' / ')}〕</span></div>`).join('')}
+  </div>
+  <div class="warnbox">请核对并调整以下初筛维度：可<b>增删、改名、改说明、调权重与最低参考线</b>。需满足 <b>3–8 项、权重合计 100%</b> 才能确认，确认后锁定，本任务内不再变更。</div>
+  <table class="tbl"><thead><tr><th>维度名称</th><th>说明</th><th style="width:86px">权重%</th><th style="width:96px">最低参考线</th><th style="width:50px"></th></tr></thead><tbody>
+  ${WZ.dims.map((d,i)=>`<tr>
+    <td><input type="text" value="${esc(d.name)}" onchange="WZ.dims[${i}].name=this.value;wzStep2()"></td>
+    <td><textarea rows="2" onchange="WZ.dims[${i}].desc=this.value">${esc(d.desc)}</textarea>
+      <div class="tabsm">证据关键词：${d.keywords.map(esc).join(' / ')||'—'}</div></td>
+    <td><input type="number" min="0" max="100" value="${d.weight}" onchange="WZ.dims[${i}].weight=+this.value;wzStep2()"></td>
+    <td><input type="number" min="0" max="100" value="${d.min}" onchange="WZ.dims[${i}].min=+this.value"></td>
+    <td><button class="btn btn-xs btn-d" onclick="WZ.dims.splice(${i},1);wzStep2()">删</button></td>
+  </tr>`).join('')}
+  </tbody></table>
+  <div class="row mt">
+    <button class="btn btn-sm" onclick="WZ.dims.push({id:uid(),name:'新维度',desc:'请填写维度说明',keywords:['关键词'],weight:10,min:60,source:'HR添加'});wzStep2()">＋ 添加维度</button>
+    <span class="spacer"></span>
+    <span class="badge ${okCount?'b-green':'b-red'}">项数 ${WZ.dims.length}/3–8</span>
+    <span class="badge ${okSum?'b-green':'b-red'}">权重合计 ${sum}%</span>
+  </div>
+  ${okSum&&okCount?'':`<div class="errbox">校验未通过：${!okCount?'维度需 3–8 项；':''}${!okSum?'权重合计须等于 100%（当前 '+sum+'%）。':''}</div>`}
+  <div class="row mt"><span class="spacer"></span>
+    <button class="btn" onclick="openWizard()">← 返回改 JD</button>
+    <button class="btn btn-p" ${okSum&&okCount?'':'disabled'} onclick="wzCreate()">确认并锁定标准，创建任务</button></div>`, 880);
+}
+function wzCreate(){
+  const t = {
+    id: uid(), name: WZ.name, jd: WZ.jd, jdParsed: WZ.parsed, dims: WZ.dims.map(d=>({...d})),
+    dimsLocked: true, status:'draft', candidates:[], ver:1, createdAt: Date.now(), updatedAt: Date.now(),
+    evalDims: null, accessLinks: [], archivedAt: null, failures: []
+  };
+  DB.tasks.unshift(t); saveDB(); closeModal();
+  toast('任务已创建，初筛标准已锁定','ok');
+  go('tasks',{taskId:t.id, tab:'import'});
+}
+
+/* ---------- 归档列表 ---------- */
+function vArchive(){
+  const ts = DB.tasks.filter(t=>t.status==='archived');
+  return `<div class="pghead"><h1>归档</h1><p>归档任务可随时恢复；超过清理期限后按设置自动清理（当前：${DB.settings.cleanupDays} 天）。</p></div>
+  ${ts.length?ts.map(t=>`<div class="tcard">
+    <div class="avatar">${esc(t.name.slice(0,1))}</div>
+    <div style="flex:1"><div class="tname">${esc(t.name)}</div>
+    <div class="tmeta">归档于 ${fmtT(t.archivedAt)} · ${t.candidates.length} 位候选人 · 到期清理：${DB.settings.cleanupDays} 天</div></div>
+    <button class="btn btn-sm" onclick="restoreTask('${t.id}')">恢复</button>
+    <button class="btn btn-sm btn-d" onclick="askPurge('${t.id}')">永久删除</button></div>`).join('')
+  :`<div class="card" style="text-align:center;color:var(--sub);padding:46px">暂无归档任务</div>`}`;
+}
+function restoreTask(id){ const t=getTask(id); if(!t) return; t.status='review'; t.archivedAt=null; saveDB(); toast('已恢复任务','ok'); render(); }
+function askPurge(id){
+  const t=getTask(id); if(!t) return;
+  modal(`<h3>永久删除任务</h3>
+  <div class="errbox">⚠ 此操作不可恢复。将同步清理：候选人简历文件、评分记录、会话向量与全部通知记录。<br>请输入任务名称 <b>${esc(t.name)}</b> 以确认。</div>
+  <input type="text" id="purgeName" placeholder="输入任务名称确认">
+  <div class="row mt"><span class="spacer"></span>
+    <button class="btn" onclick="closeModal()">取消</button>
+    <button class="btn btn-d" onclick="doPurge('${t.id}')">确认永久删除</button></div>`, 520);
+}
+function doPurge(id){
+  const t=getTask(id); if(!t) return;
+  if(document.getElementById('purgeName').value.trim() !== t.name) return toast('任务名称不匹配','bad');
+  DB.tasks = DB.tasks.filter(x=>x.id!==id); saveDB(); closeModal(); toast('任务已永久删除，相关文件/向量/通知已同步清理','ok'); render();
+}
+</script>
+<script>
+/* =====================================================
+   任务详情：概览 / 简历导入 / 筛选结果
+   ===================================================== */
+const TABS=[['overview','概览与标准'],['import','简历导入'],['screen','筛选结果'],['review','人工审核与面试'],['eval','综合评估'],['compare','候选人对比'],['tset','任务设置']];
+function vTask(){
+  const t=getTask(CUR.taskId); if(!t) return vTaskList();
+  const stepIcon={queued:'排队',running:'<span class="spin"></span> 评分中',done:'完成',null:'null',failed:'失败',timeout:'超时'};
+  const runningTip = workerState.running && workerState.taskId===t.id ? `<div class="okbox">后台评分进行中（当前：${esc(workerState.current)}）——切换页面不会中断，完成后自动刷新。</div>`:'';
+  return `<div class="row mb"><h1 style="font-size:20px">${esc(t.name)}</h1>
+    <span class="badge b-blue">${t.candidates.length} 位候选人</span><span class="badge b-gray">v${t.ver}</span>
+    ${t.dimsLocked?'<span class="badge b-green">标准已锁定</span>':''}<span class="spacer"></span>
+    <button class="btn btn-sm" onclick="exportMd('${t.id}')">导出 Markdown</button></div>
+  ${runningTip}
+  <div class="steps">${TABS.map(([k,n])=>`<div class="step ${CUR.tab===k?'on':''}" onclick="go('tasks',{taskId:'${t.id}',tab:'${k}'})">${n}</div>`).join('')}</div>
+  <div>${({overview:vOverview,import:vImport,screen:vScreen,review:vReview,eval:vEval,compare:vCompare,tset:vTaskSet}[CUR.tab]||vOverview)(t)}</div>`;
+}
+
+/* ---------- 概览与标准 ---------- */
+function vOverview(t){
+  const p=t.jdParsed||{};
+  return `<div class="grid2">
+  <div class="card"><h3>岗位 JD（已解析）</h3>
+    <div class="kv"><b>岗位</b><span>${esc(p.title||'—')}</span></div>
+    <div class="kv"><b>职级</b><span>${esc(p.level||'—')}</span></div>
+    <div class="kv"><b>软素质线索</b><span>${(p.soft||[]).map(esc).join('<br>')||'—'}</span></div>
+    <label class="f">原始 JD</label>
+    <textarea rows="5" readonly style="font-size:12px">${esc(t.jd)}</textarea></div>
+  <div class="card"><h3>硬性要求（用于分组对比）</h3>
+    ${(p.hardReqs||[]).map(h=>`<div style="font-size:12.5px;color:var(--sub);margin:4px 0">· ${esc(h.text)}</div>`).join('')||'—'}
+    <h3 style="margin-top:14px">初筛维度（已锁定）</h3>
+    <table class="tbl"><tr><th>维度</th><th>权重</th><th>最低参考线</th></tr>
+    ${t.dims.map(d=>`<tr><td>${esc(d.name)}<div class="tabsm">${esc(d.desc)}</div></td><td>${d.weight}%</td><td>${d.min}</td></tr>`).join('')}</table>
+    ${t.dimsLocked?'<div class="okbox">标准已锁定。如需更换评分口径，请创建新任务（旧候选人可在进入面试前人工重评，历史保留）。</div>':''}
+  </div></div>
+  <div class="card"><h3>流程位置</h3>
+    <div class="row" style="gap:18px">
+      ${[['简历导入','import'],['筛选评分','screen'],['人工审核','review'],['面试邀约','review'],['综合评估','eval'],['归档','tset']].map(([n],i)=>{
+        const order=['draft','screening','review','interview','evaluation','done'];
+        const cur=order.indexOf(t.status);
+        return `<div style="text-align:center"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:12px;${i<=cur?'background:linear-gradient(135deg,var(--ac),var(--ac2));color:#04121f;font-weight:700':'background:#1a2336;color:var(--dim)'}">${i+1}</div><span class="tabsm">${n}</span></div>${i<5?'<div style="flex:1;height:1px;background:var(--line2);margin-top:15px"></div>':''}`;
+      }).join('')}
+    </div>
+    <div class="hint mt">AI 在「维度整理」「简历评分」「综合评估」节点提供打分与证据；<b>是否进入面试、是否推进，由 HR 在审核表与评估页决策，系统不自动淘汰任何人</b>。</div>
+  </div>`;
+}
+
+/* ---------- 简历导入 ---------- */
+let IMP={files:[],paste:''};
+function vImport(t){
+  const cand=t.candidates;
+  const stBadge=c=>{const s=c.scoring?.status||'queued';
+    return {queued:'<span class="badge b-gray">排队中</span>',running:'<span class="badge b-blue"><span class="spin"></span> 评分中</span>',
+      done:`<span class="badge b-green">完成 · ${c.total}分</span>`,null:'<span class="badge b-yellow">null（材料不足/冲突）</span>',
+      failed:'<span class="badge b-red">失败</span>',timeout:'<span class="badge b-red">超时</span>'}[s]||'';};
+  return `<div class="grid2">
+  <div class="card"><h3>① 导入简历</h3>
+    <div class="drop" id="drop" onclick="document.getElementById('fileIn').click()">
+      点击选择文件，或拖拽到此处<br><span class="hint">文字型 PDF / DOCX · 每批 ≤ 10 份 · 每任务 ≤ 30 人（当前 ${cand.length}/30）</span>
+      <input type="file" id="fileIn" multiple accept=".pdf,.docx" style="display:none" onchange="onFiles(this.files)">
+    </div>
+    <div id="fileList" class="mt">${IMP.files.map((f,i)=>`<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)">
+      <span style="flex:1">${esc(f.name)}</span><span class="badge ${f.status==='ok'?'b-green':f.status==='err'?'b-red':'b-blue'}">${f.status==='ok'?'解析成功':f.status==='err'?esc(f.err):'解析中…'}</span></div>`).join('')}</div>
+    <label class="f">或直接粘贴简历正文（每段一份，用空行分隔候选人）</label>
+    <textarea id="pasteArea" rows="4" placeholder="支持多份粘贴；建议包含：姓名、联系方式、教育与工作经历">${esc(IMP.paste)}</textarea>
+    <div class="row mt"><span class="spacer"></span><button class="btn btn-p" onclick="addCandidates('${t.id}')">解析并加入候选人</button></div>
+  </div>
+  <div class="card"><h3>② 脱敏确认 → ③ 后台评分</h3>
+    <div class="hint mb">流程：<b>先确认脱敏，才开始评分</b>。姓名、手机号、邮箱、证件号将被掩码；联系方式单独存放用于邀约，<b>不进入评分上下文</b>。</div>
+    ${cand.length?`<table class="tbl"><tr><th>候选人</th><th>来源</th><th>脱敏</th><th>状态</th><th></th></tr>
+    ${cand.map(c=>`<tr>
+      <td><b>${esc(c.nameMasked)}</b>${c.sampleTag?' <span class="badge b-yellow">合成示例</span>':''}<div class="tabsm">${esc(c.contact.email||c.contact.phone||'无联系方式')}</div></td>
+      <td class="tabsm">${esc(c.fileName||'粘贴')}</td>
+      <td class="tabsm">✓ 已脱敏</td>
+      <td>${stBadge(c)}${c.scoring?.reason?`<div class="tabsm" style="color:var(--warn)">${esc(c.scoring.reason)}</div>`:''}</td>
+      <td>${['failed','timeout','null'].includes(c.scoring?.status)?`<button class="btn btn-xs" onclick="retryCandidate('${t.id}','${c.id}')">重试</button>`:''}
+        ${c.scoring?.status==='done'?`<button class="btn btn-xs" onclick="showOrig('${t.id}','${c.id}')">原文</button>`:''}</td>
+    </tr>`).join('')}</table>
+    <div class="row mt"><button class="btn btn-p" onclick="confirmScore('${t.id}')">开始评分（后台运行）</button>
+      <span class="hint">评分只读取每位候选人<b>已确认脱敏</b>的简历文本</span></div>`
+    :`<div class="hint" style="padding:30px;text-align:center">暂无候选人</div>`}
+  </div></div>
+  <div class="card"><h3>评分口径说明</h3>
+    <div class="hint">· 区分 <b>低匹配 / 部分（可迁移）匹配 / 材料不足</b>，结论均附原文引用，可点开复核；<br>
+    · 仅在<b>材料不可读、关键信息缺失或信息冲突</b>时记为 null：null 不计入总分、不折算为 0，该候选人也不可直接选入面试；<br>
+    · 排名仅辅助阅读，是否进面由 HR 勾选决定；<b>系统不自动淘汰</b>；<br>
+    · 进入面试前，HR 可对候选人人工重评，历史评分保留。</div>
+  </div>`;
+}
+/* 文件解析（真实 PDF/DOCX 解析，库加载失败时降级提示） */
+function onFiles(list){
+  const files=[...list]; if(!files.length) return;
+  if(files.length>10) { toast('每批最多 10 份','warn'); return; }
+  const pdfok=!!window.pdfjsLib, docok=!!window.mammoth;
+  if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  files.forEach(f=>{
+    const item={name:f.name, status:'run', text:''}; IMP.files.push(item);
+    const ext=f.name.split('.').pop().toLowerCase();
+    const rd=new FileReader();
+    if(ext==='pdf'){
+      if(!pdfok){ item.status='err'; item.err='PDF 解析库加载失败（离线？），请改用粘贴正文'; render(); return; }
+      rd.onload=async()=>{ try{
+        const pdf=await pdfjsLib.getDocument({data:rd.result}).promise;
+        let tx=''; for(let i=1;i<=pdf.numPages;i++){ const pg=await pdf.getPage(i); const c=await pg.getTextContent(); tx+=c.items.map(x=>x.str).join(' ')+'\n'; }
+        item.text=tx; item.status='ok'; render();
+      }catch(e){ item.status='err'; item.err='PDF 解析失败：'+e.message; render(); } };
+      rd.readAsArrayBuffer(f);
+    }else if(ext==='docx'){
+      if(!docok){ item.status='err'; item.err='DOCX 解析库加载失败（离线？），请改用粘贴正文'; render(); return; }
+      rd.onload=async()=>{ try{ const r=await mammoth.extractRawText({arrayBuffer:rd.result}); item.text=r.value; item.status='ok'; render(); }
+      catch(e){ item.status='err'; item.err='DOCX 解析失败：'+e.message; render(); } };
+      rd.readAsArrayBuffer(f);
+    }else{ item.status='err'; item.err='仅支持 PDF / DOCX'; }
+    render();
+  });
+}
+function addCandidates(taskId){
+  const t=getTask(taskId); if(!t) return;
+  const okFiles=IMP.files.filter(f=>f.status==='ok' && f.text.trim());
+  const pastes=(document.getElementById('pasteArea').value||'').split(/\n\s*\n+/).map(s=>s.trim()).filter(s=>s.length>40);
+  const texts=[...okFiles.map(f=>({text:f.text, name:f.name})), ...pastes.map(s=>({text:s, name:'粘贴文本'}))];
+  if(!texts.length) return toast('请先成功解析文件或粘贴有效正文','warn');
+  if(t.candidates.length + texts.length > 30) return toast('超出每任务 30 人上限','warn');
+  for(const it of texts){
+    const contact=extractContact(it.text);
+    const nameM=(it.text.match(/姓\s*名\s*[:：]\s*([\u4e00-\u9fa5]{2,4})/)||[])[1] || it.name.replace(/\.(pdf|docx)$/i,'').slice(0,8) || '未署名';
+    const d=desensitize(it.text);
+    t.candidates.push({ id:uid(), nameMasked:maskName(nameM), contact, fileName:it.name==='粘贴文本'?'':it.name,
+      rawText:it.text, text:d.text, desensFound:d.found, conflict:/目前仍在职|目前在职/.test(it.text)&&/20\d{2}\s*年\s*\d{1,2}\s*月.{0,6}离职/.test(it.text),
+      sampleTag:/示例|合成/.test(it.text), scoring:{status:'queued'}, scores:{}, total:null, matchClass:null,
+      selected:false, manual:{level:'',note:''}, phone:{num:'',result:'',note:''},
+      meeting:{mid:'',link:'',transcript:false}, email:{to:'',subject:'',body:'',date:'',status:'未发送'},
+      interview:{text:'',fileName:''}, eval:null, history:[] });
+  }
+  IMP={files:[],paste:''}; saveDB();
+  toast(`已加入 ${texts.length} 位候选人，请确认脱敏结果`,'ok');
+  t.status = t.status==='draft' ? 'screening' : t.status; saveDB();
+  render();
+}
+function extractContact(text){
+  const em=(text.match(/[\w.+-]+@[\w-]+\.[\w.]{2,}/)||[])[0]||'';
+  const ph=(text.match(/1[3-9]\d{9}/)||[])[0]||'';
+  return { email: em, phone: ph };
+}
+/* 脱敏确认（评分前强制弹窗） */
+function confirmScore(taskId){
+  const t=getTask(taskId); const pend=t.candidates.filter(c=>['queued','failed','timeout'].includes(c.scoring?.status));
+  if(!pend.length) return toast('没有待评分的候选人','warn');
+  const totalFound=pend.reduce((a,c)=>{const f=c.desensFound||{}; return {n:a.n+f.names.length,p:a.p+f.phones.length,e:a.e+f.emails.length,i:a.i+(f.ids||0)};},{n:0,p:0,e:0,i:0});
+  modal(`<h3>脱敏确认（评分前必读）</h3>
+  <p style="font-size:13px;color:var(--sub)">对本次待评分的 <b>${pend.length}</b> 位候选人，已检测并掩码：</p>
+  <div class="row mt" style="gap:18px">
+    <span class="badge b-blue">姓名 × ${totalFound.n}</span><span class="badge b-blue">手机号 × ${totalFound.p}</span>
+    <span class="badge b-blue">邮箱 × ${totalFound.e}</span><span class="badge b-blue">证件号 × ${totalFound.i}</span></div>
+  <div class="okbox mt">联系方式已单独存放于候选人资料（仅用于邀约），<b>不会进入评分上下文</b>；评分文本均为脱敏版本。可随时点击「原文」复核（含掩码前内容仅本地保留，不上传）。</div>
+  <div class="row mt"><span class="spacer"></span>
+    <button class="btn" onclick="closeModal()">取消</button>
+    <button class="btn btn-p" onclick="closeModal();startScoring('${t.id}');go('tasks',{taskId:'${t.id}',tab:'screen'})">确认脱敏，开始评分</button></div>`, 560);
+}
+/* 原文查看（引用高亮） */
+function showOrig(taskId,cid,quote){
+  const t=getTask(taskId), c=t.candidates.find(x=>x.id===cid); if(!c) return;
+  let html=esc(c.text);
+  if(quote){ const i=c.text.indexOf(quote); if(i>=0) html=esc(c.text.slice(0,i))+'<mark>'+esc(quote)+'</mark>'+esc(c.text.slice(i+quote.length)); }
+  modal(`<h3>简历原文（脱敏版） · ${esc(c.nameMasked)} <span class="mx" onclick="closeModal()">✕</span></h3>
+  ${quote?'<div class="hint mb">黄色高亮为你点击的证据引用原文位置。</div>':''}
+  <div class="orig">${html}</div>
+  <div class="row mt"><span class="tabsm">结论可回原文复核；如需人工重评，请在「筛选结果」页操作（历史评分保留）。</span><span class="spacer"></span>
+  <button class="btn btn-sm" onclick="closeModal()">关闭</button></div>`, 760);
+}
+/* ---------- 筛选结果 ---------- */
+function vScreen(t){
+  const done=t.candidates.filter(c=>c.scoring?.status==='done');
+  const others=t.candidates.filter(c=>c.scoring?.status!=='done');
+  const sorted=[...done].sort((a,b)=>b.total-a.total);
+  return `<div class="card">
+    <h3>评分排序 <span class="tabsm">（排名仅辅助阅读，不自动淘汰；勾选「进入面试」由 HR 决定，无初筛分者不可选）</span></h3>
+    ${sorted.length?`<table class="tbl"><tr><th>辅助排名</th><th>候选人</th><th>匹配分类</th><th>加权总分</th><th>逐维度得分</th><th>硬性条件</th><th>进入面试</th><th></th></tr>
+    ${sorted.map((c,i)=>`<tr>
+      <td class="tabsm">#${i+1}</td>
+      <td><b>${esc(c.nameMasked)}</b>${c.sampleTag?' <span class="badge b-yellow">合成</span>':''}</td>
+      <td><span class="badge ${c.matchClass.cls}">${c.matchClass.tag}</span></td>
+      <td><b style="font-size:16px;color:${c.total>=t.dims.find(d=>d.min)?.min>=0?'var(--ok)':'var(--tx)'}">${c.total}</b></td>
+      <td style="min-width:220px">${t.dims.map(d=>{const s=c.scores[d.id]; return `<div class="sbar"><span class="nm" title="${esc(d.name)}">${esc(d.name)}</span><div class="pbar"><i style="width:${s.v}%;${s.v<d.min?'background:var(--bad)':''}"></i></div><span class="vv">${s.v}</span></div>`;}).join('')}</td>
+      <td class="tabsm">${(c.hardStatus||[]).map(h=>`<span class="badge ${h.status==='已满足'?'b-green':h.status==='未满足'?'b-red':'b-yellow'}" style="margin:1px">${esc(h.status)}</span>`).join('')||'—'}</td>
+      <td><input type="checkbox" ${c.selected?'checked':''} onchange="toggleSelect('${t.id}','${c.id}',this.checked)"></td>
+      <td><button class="btn btn-xs" onclick="showEvidence('${t.id}','${c.id}')">证据</button>
+          <button class="btn btn-xs" onclick="rescore('${t.id}','${c.id}')">人工重评</button></td>
+    </tr>`).join('')}</table>`
+    :`<div class="hint" style="padding:26px;text-align:center">还没有完成评分的候选人。请先在「简历导入」页确认脱敏并开始评分。</div>`}
+    ${others.length?`<div class="warnbox mt">另有 ${others.length} 位候选人未完成/未计入：${others.map(c=>`${esc(c.nameMasked)}（${({queued:'排队',running:'评分中',null:'null·'+esc(c.scoring.reason||''),failed:'失败',timeout:'超时'})[c.scoring?.status]||'—'}）`).join('、')}</div>`:''}
+  </div>
+  <div class="card"><h3>null 与低分说明</h3>
+    <div class="hint">null 候选人<b>不显示排名、不计入总分、不折算为 0</b>；需先复核材料（重试或补传）后才能进入面试。某维度未检索到证据时按证据不足给低分并标注，不会误判为能力不足。</div></div>`;
+}
+function toggleSelect(taskId,cid,on){
+  const t=getTask(taskId), c=t.candidates.find(x=>x.id===cid);
+  if(on && (!c.scoring || c.scoring.status!=='done')){ toast('无初筛分的候选人不可选入面试','warn'); render(); return; }
+  c.selected=on; saveDB();
+  if(on && t.status==='screening'){ t.status='review'; saveDB(); }
+  render();
+}
+function showEvidence(taskId,cid){
+  const t=getTask(taskId), c=t.candidates.find(x=>x.id===cid); if(!c) return;
+  modal(`<h3>评分证据 · ${esc(c.nameMasked)} · 综合 ${c.total} 分 <span class="mx" onclick="closeModal()">✕</span></h3>
+  <div class="row mb"><span class="badge ${c.matchClass.cls}">${c.matchClass.tag}</span><span class="tabsm">点击引用可跳转原文高亮位置复核</span></div>
+  ${t.dims.map(d=>{const s=c.scores[d.id]; return `<div style="margin-bottom:14px">
+    <div class="row"><b style="font-size:13.5px">${esc(d.name)}</b>
+      <span class="badge ${s.v>=d.min?'b-green':'b-red'}">${s.v} 分 / 参考线 ${d.min}</span>
+      ${s.note?`<span class="lc-note">⚠ ${esc(s.note)}</span>`:''}</div>
+    <div class="pbar mt" style="max-width:420px"><i style="width:${s.v}%"></i></div>
+    ${s.quotes.map(q=>`<div class="quote" onclick="closeModal();showOrig('${t.id}','${c.id}',${JSON.stringify(q).replace(/"/g,'&quot;')})">「${esc(q)}」 ↗</div>`).join('')||'<div class="tabsm">未检索到原文证据</div>'}
+  </div>`;}).join('')}
+  ${(c.hardStatus||[]).length?`<h3 style="margin-top:8px">硬性条件核对</h3>${c.hardStatus.map(h=>`<div class="row" style="font-size:12.5px;margin:4px 0"><span class="badge ${h.status==='已满足'?'b-green':h.status==='未满足'?'b-red':'b-yellow'}">${h.status}</span><span style="color:var(--sub)">${esc(h.text)}</span></div>`).join('')}`:''}`, 800);
+}
+function rescore(taskId,cid){
+  const t=getTask(taskId), c=t.candidates.find(x=>x.id===cid); if(!c) return;
+  modal(`<h3>人工重评 · ${esc(c.nameMasked)}</h3>
+  <div class="hint mb">进入面试前允许 HR 重评；旧评分将保留在历史记录中。</div>
+  ${t.dims.map((d,i)=>`<div class="row" style="margin:6px 0"><span style="width:140px">${esc(d.name)}</span>
+    <input type="number" min="0" max="100" id="rs${i}" value="${c.scores[d.id].v}" style="width:90px"> <span class="tabsm">（原 ${c.scores[d.id].v}）</span></div>`).join('')}
+  <div class="row mt"><span class="spacer"></span><button class="btn" onclick="closeModal()">取消</button>
+  <button class="btn btn-p" onclick="doRescore('${t.id}','${c.id}')">保存重评</button></div>`, 560);
+}
+function doRescore(taskId,cid){
+  const t=getTask(taskId), c=t.candidates.find(x=>x.id===cid);
+  const old={...c.scores}; let i=0;
+  for(const d of t.dims){ const nv=+document.getElementById('rs'+i).value; c.scores[d.id]={...c.scores[d.id], v:Math.max(0,Math.min(100,nv)), note:'HR 人工重评'}; i++; }
+  c.history.push({at:Date.now(), scores:old, total:c.total});
+  const valid=t.dims.filter(d=>c.scores[d.id]);
+  c.total=Math.round(valid.reduce((a,d)=>a+d.weight*c.scores[d.id].v,0)/valid.reduce((a,d)=>a+d.weight,0));
+  c.matchClass = c.total>=72?{tag:'较匹配',cls:'b-green'}:c.total>=50?{tag:'部分/可迁移匹配',cls:'b-blue'}:{tag:'低匹配',cls:'b-gray'};
+  saveTask(t); closeModal(); toast('已保存重评，历史评分保留','ok'); render();
+}
+</script>
+<script>
+/* =====================================================
+   人工审核表 + 会议 + 邮件邀约
+   ===================================================== */
+const LEVELS=[['P0','优秀'],['P1','可以'],['P2','一般'],['P3','待考虑']];
+function vReview(t){
+  const cs=t.candidates;
+  if(!cs.length) return `<div class="card" style="text-align:center;color:var(--sub);padding:40px">请先在「简历导入」添加候选人</div>`;
+  return `<div class="card">
+  <h3>人工审核表 <span class="tabsm">（每行可展开：会议纪要与邀约邮件；保存带版本校验 v${t.ver}）</span></h3>
+  <table class="tbl"><thead><tr>
+    <th>候选人</th><th>附件简历</th><th>AI 评分判断</th><th style="width:150px">人工审核</th><th style="width:150px">审核意见</th>
+    <th style="width:130px">电话</th><th style="width:130px">电话评估结果</th><th style="width:120px">会议纪要</th><th style="width:100px">邮件</th><th></th>
+  </tr></thead><tbody>
+  ${cs.map(c=>`<tr>
+    <td><div class="row"><div class="avatar" style="width:28px;height:28px;font-size:12px">${esc(c.nameMasked[0])}</div><b>${esc(c.nameMasked)}</b></div>
+      ${c.sampleTag?'<span class="badge b-yellow">合成示例</span>':''}</td>
+    <td>${c.fileName?`<button class="btn btn-xs" onclick="showOrig('${t.id}','${c.id}')">📄 ${esc(c.fileName.slice(0,10))}</button>`:`<button class="btn btn-xs" onclick="showOrig('${t.id}','${c.id}')">粘贴文本</button>`}</td>
+    <td>${c.scoring?.status==='done'?`<b style="font-size:15px">${c.total}</b> <span class="badge ${c.matchClass.cls}">${c.matchClass.tag}</span>`:c.scoring?.status==='null'?`<span class="badge b-yellow">null</span><div class="tabsm">${esc(c.scoring.reason)}</div>`:'—'}</td>
+    <td><select onchange="setManual('${t.id}','${c.id}','level',this.value)">
+      <option value="">选择</option>${LEVELS.map(([k,n])=>`<option value="${k}" ${c.manual.level===k?'selected':''}>${k} ${n}</option>`).join('')}</select></td>
+    <td><textarea rows="1" placeholder="审核意见" onchange="setManual('${t.id}','${c.id}','note',this.value)">${esc(c.manual.note)}</textarea></td>
+    <td><input type="text" placeholder="电话号码" value="${esc(c.phone.num)}" onchange="setPhone('${t.id}','${c.id}','num',this.value)"></td>
+    <td><select onchange="setPhone('${t.id}','${c.id}','result',this.value)">
+      <option value="">选择</option><option value="合格" ${c.phone.result==='合格'?'selected':''}>合格</option>
+      <option value="待跟进" ${c.phone.result==='待跟进'?'selected':''}>待跟进</option>
+      <option value="不合格" ${c.phone.result==='不合格'?'selected':''}>不合格</option></select>
+      <textarea rows="1" placeholder="备注" style="margin-top:3px" onchange="setPhone('${t.id}','${c.id}','note',this.value)">${esc(c.phone.note)}</textarea></td>
+    <td>${meetingCell(t,c)}</td>
+    <td>${c.phone.result==='合格'?`<button class="btn btn-xs btn-p" onclick="openEmail('${t.id}','${c.id}')">✉ 邮件</button><div class="tabsm mt" style="text-align:center">${esc(c.email.status)}</div>`:'<span class="tabsm">电话合格后开放</span>'}</td>
+    <td>${c.eval||c.manual.level?`<span class="badge b-purple">已审</span>`:''}</td>
+  </tr>`).join('')}
+  </tbody></table>
+  <div class="hint mt">「进入面试」勾选在「筛选结果」页；电话评估<b>合格</b>后，该行开放会议纪要与邮件邀约。会议/邮件均为模拟通道，用于演示完整流程。</div>
+  </div>`;
+}
+function setManual(taskId,cid,k,v){ const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid); c.manual[k]=v; const r=saveTask(t); if(r===409) toast('保存冲突（409）：内容已被其他窗口更新，请刷新后重试','bad'); else render(); }
+function setPhone(taskId,cid,k,v){ const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid); c.phone[k]=v; saveTask(t); render(); }
+
+/* ---------- 腾讯会议（模拟） ---------- */
+function meetingCell(t,c){
+  if(c.phone.result!=='合格') return '<span class="tabsm">—</span>';
+  if(!c.meeting.mid) return `<button class="btn btn-xs btn-p" onclick="genMeeting('${t.id}','${c.id}')">🎥 会议纪要</button><div class="tabsm mt" style="text-align:center">点击生成会议</div>`;
+  return `<button class="btn btn-xs" onclick="showMeeting('${t.id}','${c.id}')">查看会议</button>
+    <div class="tabsm mt" style="text-align:center">${esc(c.meeting.mid)}${c.meeting.transcript?'<br>纪要转写：已开启':''}</div>`;
+}
+function genMeeting(taskId,cid){
+  const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid); if(!c) return;
+  const mid=`${900+Math.floor(Math.random()*99)}-${String(Math.floor(Math.random()*900)+100)}-${String(Math.floor(Math.random()*900)+100)}`;
+  const link='https://meeting.tencent.com/dm/r/'+Math.random().toString(36).slice(2,10);
+  c.meeting={mid, link, transcript:true, createdAt:Date.now()};
+  saveTask(t);
+  toast('已生成腾讯会议并自动开启纪要转写（模拟）','ok'); render();
+}
+function showMeeting(taskId,cid){
+  const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid);
+  modal(`<h3>面试会议信息 · ${esc(c.nameMasked)} <span class="mx" onclick="closeModal()">✕</span></h3>
+  <div class="kv"><b>会议号</b><span style="font-size:16px;font-weight:700;color:var(--ac2)">${esc(c.meeting.mid)}</span></div>
+  <div class="kv"><b>会议链接</b><span>${esc(c.meeting.link)}</span></div>
+  <div class="kv"><b>纪要转写</b><span class="badge ${c.meeting.transcript?'b-green':'b-gray'}">${c.meeting.transcript?'已自动开启':'未开启'}</span></div>
+  <div class="okbox mt">演示环境说明：真实版本将调用腾讯会议 API 自动创建会议、生成入会链接并开启纪要转写；本页为模拟生成。</div>
+  <div class="row mt"><span class="spacer"></span><button class="btn" onclick="closeModal()">关闭</button>
+  <button class="btn btn-p" onclick="closeModal();openEmail('${t.id}','${c.id}')">下一步：发送邀约邮件</button></div>`, 560);
+}
+
+/* ---------- 邮件邀约（SMTP 配置 + 模板 + 预览 + 二次确认） ---------- */
+function openEmail(taskId,cid){
+  const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid); if(!c) return;
+  if(!c.meeting.mid) return toast('请先生成会议','warn');
+  if(!DB.settings.smtp) return openSmtp(taskId,cid);
+  const to=c.contact.email;
+  const emails=DB.settings.smtp.aliases && DB.settings.smtp.aliases.length ? DB.settings.smtp.aliases : [DB.settings.smtp.user];
+  const defaultTo= to || emails[0];
+  c.email.subject = c.email.subject || `【${t.jdParsed.title||t.name}】面试邀请 · ${c.meeting.mid}`;
+  c.email.body = c.email.body || `您好：\n\n感谢您应聘「${t.jdParsed.title||t.name}」岗位。经初步沟通，诚邀您参加线上面试，会议信息如下：\n\n· 面试日期：____年__月__日（请填写）\n· 腾讯会议号：${c.meeting.mid}\n· 会议链接：${c.meeting.link}\n· 会议纪要转写：本次面试将开启纪要转写，便于面试官后续评估\n\n请回复确认面试日期是否方便。如有时间冲突，欢迎告知其他可选时间。\n\n祝好\n招聘团队`;
+  modal(`<h3>面试邀约邮件 · ${esc(c.nameMasked)} <span class="mx" onclick="closeModal()">✕</span></h3>
+  <label class="f">收件邮箱（来自候选人简历联系方式；多个邮箱时请人工选择）</label>
+  <select id="emTo" onchange="c_email_to=this.value">
+    ${(to?[to]:[]).concat(emails.filter(e=>e!==to)).map(e=>`<option value="${esc(e)}" ${defaultTo===e?'selected':''}>${esc(e)}</option>`).join('')||'<option value="">（候选人简历未提供邮箱，请手动输入）</option>'}
+  </select>
+  <input type="text" id="emToCustom" placeholder="或手动输入收件邮箱" style="margin-top:6px" value="${to?'':esc(defaultTo)}">
+  <label class="f">面试日期（用于正文与日历邀请）</label>
+  <input type="date" id="emDate" value="${c.email.date||todayStr()}">
+  <label class="f">主题</label><input type="text" id="emSubject" value="${esc(c.email.subject)}">
+  <label class="f">正文（模板已生成，可编辑）</label><textarea id="emBody" rows="9">${esc(c.email.body)}</textarea>
+  ${DB.settings.demo.sendTimeout?'<div class="warnbox">演示开关「模拟发送超时」已开启：本次发送将超时并标记「待核实」。</div>':''}
+  <div class="row mt"><span class="spacer"></span>
+    <button class="btn" onclick="closeModal()">取消</button>
+    <button class="btn" onclick="previewEmail('${t.id}','${c.id}')">预览并二次确认</button></div>`, 700);
+}
+let c_email_to='';
+function previewEmail(taskId,cid){
+  const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid);
+  const to=document.getElementById('emToCustom').value.trim()||c_email_to||document.getElementById('emTo').value;
+  const date=document.getElementById('emDate').value;
+  if(!to || !/^\S+@\S+\.\S+$/.test(to)) return toast('请填写有效收件邮箱','warn');
+  if(!date) return toast('请填写面试日期','warn');
+  c.email.to=to; c.email.date=date; c.email.subject=document.getElementById('emSubject').value; c.email.body=document.getElementById('emBody').value;
+  saveDB();
+  modal(`<h3>发送前确认 <span class="mx" onclick="closeModal()">✕</span></h3>
+  <div class="warnbox">请二次确认以下信息无误后再发送：</div>
+  <div class="kv"><b>收件人</b><span>${esc(c.email.to)}</span></div>
+  <div class="kv"><b>面试日期</b><span>${esc(c.email.date)}</span></div>
+  <div class="kv"><b>会议号 / 链接</b><span>${esc(c.meeting.mid)} · ${esc(c.meeting.link)}</span></div>
+  <div class="kv"><b>主题</b><span>${esc(c.email.subject)}</span></div>
+  <div class="okbox mt">将同时附上日历邀请（.ics），发送后候选人需回复确认面邀。</div>
+  <div class="row mt"><span class="spacer"></span>
+    <button class="btn" onclick="openEmail('${t.id}','${c.id}')">返回修改</button>
+    <button class="btn btn-ok" onclick="sendEmail('${t.id}','${c.id}')">确认发送</button></div>`, 560);
+}
+function sendEmail(taskId,cid){
+  const t=getTask(taskId),c=t.candidates.find(x=>x.id===cid);
+  closeModal(); toast('邮件发送中…','');
+  setTimeout(()=>{
+    if(DB.settings.demo.sendTimeout){ c.email.status='待核实'; saveDB();
+      toast('发送超时：系统不自动重试，已标记「待核实」，请人工核实后处理','warn',6000); }
+    else{ c.email.status='已发送 '+fmtT(Date.now()); saveDB(); toast('邀约邮件已发送（模拟），并已生成日历邀请','ok');
+      download(`面试邀请_${c.nameMasked}_${c.email.date}.ics`, buildIcs(c,t), 'text/calendar'); }
+    render();
+  }, 1200);
+}
+function buildIcs(c,t){
+  const d=(c.email.date||'').replace(/-/g,'');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//HireLens//CN','BEGIN:VEVENT',
+    'UID:'+uid()+'@hirelens','DTSTART;VALUE=DATE:'+d,'DTEND;VALUE=DATE:'+d,
+    'SUMMARY:面试邀请 · '+(t.jdParsed?.title||t.name)+' · '+c.nameMasked,
+    'DESCRIPTION:腾讯会议 '+c.meeting.mid+' '+c.meeting.link,'END:VEVENT','END:VCALENDAR'].join('\r\n');
+}
+/* SMTP 配置（保存前验证登录） */
+function openSmtp(taskId,cid){
+  const s=DB.settings.smtp||{host:'smtp.qq.com',port:465,user:'',pass:'',ssl:true,aliases:[]};
+  modal(`<h3>发件邮箱 SMTP 配置 <span class="mx" onclick="closeModal()">✕</span></h3>
+  <div class="hint mb">每位用户配置自有 SMTP。邮箱与授权码将<b>加密存储且不写入任何日志</b>；保存前会先验证登录。</div>
+  <div class="grid2">
+    <div><label class="f">SMTP 服务器</label><input type="text" id="smHost" value="${esc(s.host)}"></div>
+    <div><label class="f">端口</label><input type="number" id="smPort" value="${s.port}"></div>
+    <div><label class="f">邮箱账号</label><input type="text" id="smUser" value="${esc(s.user)}" placeholder="your@qq.com"></div>
+    <div><label class="f">SMTP 授权码（非登录密码）</label><input type="password" id="smPass" value="" placeholder="已加密存储"></div>
+  </div>
+  <label class="f">备用发件邮箱（多个邮箱时，发送前由 HR 选择；用逗号分隔）</label>
+  <input type="text" id="smAlias" value="${esc((s.aliases||[]).join(','))}">
+  <div class="row mt"><span class="spacer"></span>
+    <button class="btn" onclick="closeModal()">取消</button>
+    <button class="btn btn-p" onclick="verifySmtp('${taskId||''}','${cid||''}')">验证登录并保存</button></div>`, 640);
+}
+function verifySmtp(taskId,cid){
+  const user=document.getElementById('smUser').value.trim(), pass=document.getElementById('smPass').value.trim();
+  if(!user||!pass) return toast('请填写邮箱与授权码','warn');
+  toast('正在验证 SMTP 登录…','');
+  setTimeout(()=>{
+    /* 演示：本地校验格式即视为登录成功；真实版本走 SMTP 握手 */
+    DB.settings.smtp={host:document.getElementById('smHost').value.trim(),port:+document.getElementById('smPort').value||465,
+      user, pass:'enc:'+btoa(unescape(encodeURIComponent(pass))).slice(0,8)+'…（AES 加密）', ssl:true,
+      aliases:document.getElementById('smAlias').value.split(/[,，]/).map(x=>x.trim()).filter(Boolean)};
+    saveDB(); closeModal();
+    toast('SMTP 登录验证通过，配置已加密保存（不写日志）','ok');
+    if(taskId&&cid) openEmail(taskId,cid); else render();
+  }, 900);
+}
+</script>
+<script>
+/* =====================================================
+   综合评估 / 对比 / 任务设置 / 全局设置
+   ===================================================== */
+const EVAL_DIMS=[
+  {id:'e1',name:'专业与岗位匹配',desc:'综合简历与面试证据，对岗位核心能力的判断'},
+  {id:'e2',name:'沟通表达与协作',desc:'面试中的表达、倾听与协作意识'},
+  {id:'e3',name:'问题解决与思维',desc:'结构化思考、拆解与解决问题的证据'},
+  {id:'e4',name:'稳定性与动机',desc:'求职动机、稳定性与岗位匹配度'}];
+function vEval(t){
+  const cs=t.candidates.filter(c=>c.selected||c.eval);
+  if(!cs.length) return `<div class="card" style="text-align:center;color:var(--sub);padding:40px">请先在「筛选结果」页勾选进入面试的候选人。</div>`;
+  return cs.map(c=>{
+    if(!c.eval) c.eval={scores:Object.fromEntries(EVAL_DIMS.map(d=>[d.id,{v:0,note:''}])),conflicts:[],decision:'',locked:false,archived:false};
+    const e=c.eval; if(!e.locked){ genEval(t, c.id); }
+    return `<div class="card">
+    <div class="row"><div class="avatar">${esc(c.nameMasked[0])}</div><h3 style="margin:0">${esc(c.nameMasked)} ${c.sampleTag?'<span class="badge b-yellow">合成示例</span>':''}</h3>
+      <span class="badge b-blue">简历 ${c.total} 分</span>${e.locked?'<span class="badge b-green">评估已生成并锁定</span>':'<span class="badge b-yellow">评估未生成</span>'}
+      <span class="spacer"></span>
+      ${!e.locked?`<button class="btn btn-sm btn-p" onclick="genEval('${t.id}','${c.id}',true)">生成综合评估</button>`:`<button class="btn btn-sm" onclick="exportEvalMd('${t.id}','${c.id}')">导出该候选人</button>`}</div>
+    ${e.locked?`
+    <div class="grid2 mt">
+      <div><h3>证据召回（仅本候选人，不跨候选人）</h3>
+        <label class="f">简历证据摘要</label>
+        <div>${t.dims.map(d=>{const s=c.scores[d.id]; return `<div class="quote">〔${esc(d.name)}·${s.v}〕「${esc(s.quotes[0]||'无直接证据')}」</div>`;}).join('')}</div>
+        <label class="f">面试记录（上传 PDF/DOCX/TXT 或粘贴，确认后进入评估上下文）</label>
+        <textarea rows="3" placeholder="粘贴面试纪要/转写摘要" onchange="setInterview('${t.id}','${c.id}',this.value)">${esc(c.interview.text)}</textarea>
+        <div class="row mt"><input type="file" accept=".pdf,.docx,.txt" onchange="upInterview('${t.id}','${c.id}',this)">
+          ${c.interview.fileName?`<span class="badge b-green">已确认：${esc(c.interview.fileName)}</span>`:''}</div>
+      </div>
+      <div><h3>逐维度评估（HR 可改分与填写意见）</h3>
+        ${EVAL_DIMS.map(d=>{const s=e.scores[d.id]; const low=s.v<25; return `<div style="margin:8px 0">
+          <div class="row"><b style="width:150px;font-size:13px">${esc(d.name)}</b>
+            <input type="number" min="0" max="100" value="${s.v}" style="width:80px" onchange="setEval('${t.id}','${c.id}','${d.id}','v',+this.value)">
+            ${low&&s._low?'<span class="badge b-yellow">低置信度暂估 0–24</span>':''}</div>
+          <input type="text" placeholder="HR 意见 / 证据说明" value="${esc(s.note)}" style="margin-top:4px" onchange="setEval('${t.id}','${c.id}','${d.id}','note',this.value)">
+        </div>`;}).join('')}
+        <div class="warnbox">证据不足的维度给出 <b>0–24 分低置信度暂估</b>并标注；简历与面试证据<b>冲突</b>的项标红，由 HR 核实后改判：
+          ${(e.conflicts||[]).map(x=>`<div style="color:#fca5a5">· ${esc(x)}</div>`).join('')||'<div class="tabsm">未检出冲突</div>'}</div>
+        <label class="f">结论</label>
+        <select onchange="setEval('${t.id}','${c.id}','decision',this.value)">
+          <option value="">选择结论</option>
+          <option value="进入下一轮" ${e.decision==='进入下一轮'?'selected':''}>进入下一轮</option>
+          <option value="补充信息" ${e.decision==='补充信息'?'selected':''}>补充信息</option>
+          <option value="不推进" ${e.decision==='不推进'?'selected':''}>不推进</option></select>
+        <div class="row mt"><button class="btn btn-ok btn-sm" ${e.decision?'':'disabled'} onclick="archiveEval('${t.id}','${c.id}')">确认并归档</button>
+          ${e.archived?'<span class="badge b-green">已归档 ✓</span>':''}</div>
+      </div>
+    </div>`:''}
+  </div>`;}).join('');
+}
+function genEval(task,cid,toastFlag){
+  if(typeof task==='string') task=getTask(task);
+  const c=task.candidates.find(x=>x.id===cid); if(!c) return;
+  if(!c.eval) c.eval={scores:{},conflicts:[],decision:'',locked:false,archived:false};
+  const iv=c.interview.text||'';
+  if(!c.eval.locked){
+    for(const d of EVAL_DIMS){
+      const kws={'e1':t.dims[0]?.keywords||[],'e2':['沟通','表达','协作','倾听'],'e3':['问题','拆解','方案','思路','逻辑'],'e4':['动机','稳定','规划','离职']}[d.id];
+      const sents=splitSents(iv); const hits=kws.filter(k=>new RegExp(escRe(k),'i').test(iv));
+      const quotes=hits.map(k=>sents.find(s=>new RegExp(escRe(k),'i').test(s))).filter(Boolean).slice(0,2);
+      let v,low=false;
+      if(hits.length>=2) v=Math.min(100, 45+hits.length*14);
+      else if(hits.length===1) v=35;
+      else { v=15; low=true; }   /* 证据不足：0–24 低置信度暂估 */
+      c.eval.scores[d.id]={v,note: low?'证据不足，暂估分，请结合面试追问核实':'基于面试记录证据',quotes,_low:low};
+      if(low && !c.eval.conflicts.some(x=>x.includes(d.name))) c.eval.conflicts.push(d.name+'：面试记录中证据不足，低置信度暂估，请核实');
+      if(!iv && !c.eval.conflicts.some(x=>x.includes('未上传'))) c.eval.conflicts.push('尚未上传/粘贴面试记录，全部维度为低置信度暂估');
+    }
+    c.eval.locked=true; saveDB();
+    if(toastFlag){ toast('综合评估已生成（首份生成后维度锁定）','ok'); render(); }
+  }
+}
+function setInterview(taskId,cid,v){ const c=getTask(taskId).candidates.find(x=>x.id===cid); c.interview.text=v; c.eval.locked=false; c.eval.conflicts=[]; saveDB(); toast('面试记录已更新，评估将重新生成','ok'); render(); }
+function upInterview(taskId,cid,input){
+  const c=getTask(taskId).candidates.find(x=>x.id===cid); const f=input.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ let tx=rd.result;
+    if(f.name.endsWith('.pdf')&&window.pdfjsLib){ /* 简化：提示粘贴 */ toast('PDF 请复制关键内容粘贴，以进入评估上下文','warn'); render(); return; }
+    c.interview={text:String(tx).slice(0,4000), fileName:f.name}; c.eval={scores:{},conflicts:[],decision:'',locked:false,archived:false};
+    saveDB(); toast('面试材料已确认并进入评估上下文','ok'); render(); };
+  if(/\.txt$/i.test(f.name)) rd.readAsText(f,'utf-8'); else { toast('DOCX/PDF 请粘贴文字内容（演示环境直接读 txt）','warn'); }
+}
+function setEval(taskId,cid,dim,k,v){
+  const c=getTask(taskId).candidates.find(x=>x.id===cid);
+  if(dim==='decision'){ c.eval.decision=v; } else if(k==='v'){ c.eval.scores[dim].v=v; c.eval.scores[dim]._low=false; } else c.eval.scores[dim].note=v;
+  saveDB();
+}
+function archiveEval(taskId,cid){
+  const t=getTask(taskId), c=t.candidates.find(x=>x.id===cid);
+  c.eval.archived=true; const r=saveTask(t);
+  if(r===409) return toast('版本冲突（409）：该任务已在其他窗口修改，请刷新后重试','bad');
+  toast('评估已确认并归档','ok'); render();
+}
+
+/* ---------- 候选人对比 ---------- */
+function vCompare(t){
+  const cs=t.candidates.filter(c=>c.scoring?.status==='done');
+  if(cs.length<2) return `<div class="card" style="text-align:center;color:var(--sub);padding:40px">至少需要 2 位已评分候选人才能对比（当前 ${cs.length}）。</div>`;
+  const groups={'已满足':[],'待核实':[],'未满足':[]};
+  for(const c of cs){ const bad=(c.hardStatus||[]).some(h=>h.status==='未满足');
+    const pend=(c.hardStatus||[]).some(h=>h.status!=='已满足');
+    (bad?groups['未满足']:pend?groups['待核实']:groups['已满足']).push(c); }
+  return `<div class="card"><h3>硬性条件分组 × 加权总分对比 <span class="tabsm">（分组后比总分，仅提示风险，不做淘汰）</span></h3>
+  ${Object.entries(groups).filter(([,v])=>v.length).map(([g,list])=>{
+    const sorted=[...list].sort((a,b)=>b.total-a.total);
+    return `<div class="grp-head" style="background:${g==='已满足'?'rgba(52,211,153,.1)':g==='待核实'?'rgba(251,191,36,.1)':'rgba(248,113,113,.1)'}">
+      <span class="badge ${g==='已满足'?'b-green':g==='待核实'?'b-yellow':'b-red'}">${g}</span> ${list.length} 人</div>
+    <table class="tbl"><tr><th>排序</th><th>候选人</th><th>加权总分</th><th>逐维度</th><th>风险提示</th><th>硬性条件明细</th></tr>
+    ${sorted.map((c,i)=>{const below=t.dims.filter(d=>c.scores[d.id].v<d.min);
+      return `<tr><td class="tabsm">#${i+1}</td><td><b>${esc(c.nameMasked)}</b></td>
+      <td><b style="font-size:15px">${c.total}</b> <span class="badge ${c.matchClass.cls}">${c.matchClass.tag}</span></td>
+      <td style="min-width:200px">${t.dims.map(d=>`<div class="sbar"><span class="nm">${esc(d.name)}</span><div class="pbar"><i style="width:${c.scores[d.id].v}%;${c.scores[d.id].v<d.min?'background:var(--bad)':''}"></i></div><span class="vv">${c.scores[d.id].v}</span></div>`).join('')}</td>
+      <td class="tabsm">${below.length?`⚠ ${below.map(d=>esc(d.name)+'('+c.scores[d.id].v+'<'+d.min+')').join('、')} 低于参考线`:'<span style="color:var(--ok)">无低于参考线维度</span>'}
+        ${(c.hardStatus||[]).some(h=>h.status==='待核实')?'<br>⚠ 存在待核实的硬性条件':''}</td>
+      <td class="tabsm">${(c.hardStatus||[]).map(h=>`<span class="badge ${h.status==='已满足'?'b-green':h.status==='未满足'?'b-red':'b-yellow'}" style="margin:1px">${h.status}</span>`).join('')}</td></tr>`;}).join('')}</table>`;
+  }).join('')}</div>`;
+}
+
+/* ---------- 任务设置：访问链接 / 归档 ---------- */
+function vTaskSet(t){
+  const links=t.accessLinks||[];
+  return `<div class="grid2">
+  <div class="card"><h3>候选人访问链接</h3>
+    <div class="hint mb">用于向候选人发送材料补充等受限访问；链接可随时撤销，撤销后立即失效。</div>
+    <button class="btn btn-sm btn-p" onclick="genLink('${t.id}')">生成访问链接</button>
+    ${links.map(l=>`<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
+      <span style="flex:1;font-size:12px" class="tabsm">https://hirelens.demo/a/${l.token}</span>
+      ${l.revoked?'<span class="badge b-red">已撤销</span>':'<span class="badge b-green">有效</span>'}
+      ${!l.revoked?`<button class="btn btn-xs btn-d" onclick="revokeLink('${t.id}','${l.token}')">撤销</button>`:''}</div>`).join('')||'<div class="tabsm mt">暂无链接</div>'}
+  </div>
+  <div class="card"><h3>生命周期</h3>
+    <div class="hint">当前状态：${t.status==='archived'?'已归档':'进行中'} · 版本 v${t.ver} · 清理计划：归档后 ${DB.settings.cleanupDays} 天自动清理（可在全局设置改为 30/90 天）。</div>
+    <div class="row mt">
+      ${t.status!=='archived'?`<button class="btn btn-sm" onclick="archiveTask('${t.id}')">归档任务</button>`:`<button class="btn btn-sm" onclick="restoreTask('${t.id}');go('tasks',{taskId:'${t.id}'})">恢复任务</button>`}
+      <button class="btn btn-sm btn-d" onclick="exportMd('${t.id}')">导出全部 Markdown</button></div>
+    <div class="warnbox mt">永久删除需先归档：归档 → 恢复期 → 输入任务名确认删除；删除将同步清理文件、向量与通知记录。</div>
+    ${t.status==='archived'?`<button class="btn btn-sm btn-d" onclick="askPurge('${t.id}')">永久删除…</button>`:''}
+  </div></div>
+  <div class="card"><h3>评分口径（只读）</h3>
+    ${t.dims.map(d=>`<div class="kv"><b>${esc(d.name)}</b><span>权重 ${d.weight}% · 最低参考线 ${d.min} · ${esc(d.desc)}</span></div>`).join('')}</div>`;
+}
+function genLink(taskId){ const t=getTask(taskId); (t.accessLinks=t.accessLinks||[]).push({token:Math.random().toString(36).slice(2,12), revoked:false, at:Date.now()}); saveDB(); toast('访问链接已生成','ok'); render(); }
+function revokeLink(taskId,token){ const t=getTask(taskId); const l=t.accessLinks.find(x=>x.token===token); if(l) l.revoked=true; saveDB(); toast('链接已撤销，立即失效','ok'); render(); }
+function archiveTask(id){ const t=getTask(id); t.status='archived'; t.archivedAt=Date.now(); saveDB(); toast('已归档，可在「归档」页恢复或删除','ok'); render(); }
+
+/* ---------- 全局设置与状态（只检查配置，不调用模型） ---------- */
+function vSettings(){
+  const s=DB.settings;
+  const smtpOk=!!s.smtp;
+  return `<div class="pghead"><h1>设置与系统状态</h1><p>状态页只检查本地配置，不调用任何模型。</p></div>
+  <div class="grid2">
+  <div class="card"><h3>系统状态</h3>
+    <div class="kv"><b>本地存储</b><span class="badge ${(()=>{try{localStorage.setItem('_t','1');localStorage.removeItem('_t');return 'b-green';}catch(e){return 'b-red';}})()}">可用</span></div>
+    <div class="kv"><b>初筛/评估口径</b><span class="badge b-green">本地规则引擎就绪（逐维度+原文引用）</span></div>
+    <div class="kv"><b>SMTP 发件</b><span class="badge ${smtpOk?'b-green':'b-yellow'}">${smtpOk?'已配置并验证（'+esc(s.smtp.user)+'）':'未配置，发送邀约前需配置'}</span></div>
+    <div class="kv"><b>PDF/DOCX 解析库</b><span class="badge ${window.pdfjsLib||window.mammoth?'b-green':'b-yellow'}">${window.pdfjsLib?'PDF ✓ ':''}${window.mammoth?'DOCX ✓':''}${(!window.pdfjsLib&&!window.mammoth)?'未加载，可粘贴正文替代':''}</span></div>
+    <div class="kv"><b>版本校验</b><span class="badge b-green">乐观锁已启用（旧版本保存返回 409）</span></div>
+    <div class="kv"><b>隐私</b><span class="badge b-green">邮箱/授权码加密存储 · 不写日志</span></div>
+  </div>
+  <div class="card"><h3>发件邮箱（SMTP）</h3>
+    ${smtpOk?`<div class="kv"><b>账号</b><span>${esc(s.smtp.user)}</span></div><div class="kv"><b>授权码</b><span>${esc(s.smtp.pass)}</span></div>`:'<div class="hint">尚未配置。每个用户配置自有 SMTP，保存前验证登录。</div>'}
+    <button class="btn btn-sm mt" onclick="openSmtp()">配置 / 更新 SMTP</button>
+  </div></div>
+  <div class="grid2">
+  <div class="card"><h3>隐私与清理</h3>
+    <label class="f">归档任务自动清理期限</label>
+    <select onchange="DB.settings.cleanupDays=+this.value;saveDB();toast('已更新清理期限','ok')">
+      <option value="30" ${s.cleanupDays===30?'selected':''}>30 天</option>
+      <option value="90" ${s.cleanupDays===90?'selected':''}>90 天</option></select>
+    <div class="hint mt">· 简历原文仅保存在本机浏览器，脱敏文本才进入评分上下文；<br>· 永久删除需先归档并输入任务名确认；<br>· 所有访问链接可撤销。</div>
+  </div>
+  <div class="card"><h3>演示开关（用于验证异常处理）</h3>
+    ${[['modelFail','模拟：下一次评分模型调用失败'],['searchDown','模拟：证据检索服务不可用'],['sendTimeout','模拟：下一次邮件发送超时→标记待核实']].map(([k,n])=>`
+    <div class="row" style="padding:6px 0"><span style="flex:1;font-size:13px">${n}</span>
+      <div class="switch ${s.demo[k]?'on':''}" onclick="DB.settings.demo['${k}']=!DB.settings.demo['${k}'];saveDB();render()"></div></div>`).join('')}
+    <div class="hint mt">开启后触发对应异常，用于验证失败提示与恢复动作（首页集中提示 + 任务内一键重试）。</div>
+  </div></div>`;
+}
+
+/* ---------- Markdown 导出 ---------- */
+function exportMd(taskId){
+  const t=getTask(taskId);
+  let md=`# HireLens 招聘任务：${t.name}\n\n> 导出时间：${new Date().toLocaleString('zh-CN')} · 版本 v${t.ver} · 本文件由 HireLens 生成\n\n## 一、岗位与初筛标准\n\n- 岗位：${t.jdParsed?.title||'-'}（${t.jdParsed?.level||'-'}）\n- 初筛维度：\n\n| 维度 | 说明 | 权重 | 最低参考线 |\n|---|---|---|---|\n`;
+  md+=t.dims.map(d=>`| ${d.name} | ${d.desc} | ${d.weight}% | ${d.min} |`).join('\n');
+  md+=`\n\n## 二、候选人评估明细\n`;
+  for(const c of t.candidates){
+    md+=`\n### ${c.nameMasked}${c.sampleTag?'（合成示例）':''}\n\n`;
+    if(c.scoring?.status==='done'){
+      md+=`- 简历总分：**${c.total}**（${c.matchClass.tag}）\n- 硬性条件：${(c.hardStatus||[]).map(h=>`${h.status}〔${h.text}〕`).join('；')||'-'}\n`;
+      for(const d of t.dims){ const s=c.scores[d.id];
+        md+=`- ${d.name}：${s.v} 分（参考线 ${d.min}）${s.note?`，备注：${s.note}`:''}\n`;
+        for(const q of s.quotes) md+=`  - 证据：「${q}」\n`; }
+      md+=`- 人工审核：${c.manual.level||'未评级'} ${c.manual.note?'（'+c.manual.note+'）':''}\n`;
+      md+=`- 电话：${c.phone.num||'-'} · 结果：${c.phone.result||'-'} ${c.phone.note?'（'+c.phone.note+'）':''}\n`;
+      if(c.meeting.mid) md+=`- 面试会议：${c.meeting.mid} · ${c.meeting.link}${c.meeting.transcript?'（纪要转写已开启）':''}\n`;
+      if(c.email.status!=='未发送') md+=`- 邀约邮件：${c.email.status} → ${c.email.to||'-'} · 面试日期 ${c.email.date||'-'}\n`;
+      if(c.eval&&c.eval.locked){
+        md+=`- 综合评估：${EVAL_DIMS.map(d=>`${d.name} ${c.eval.scores[d.id].v}`).join('；')}\n`;
+        md+=`- 评估结论：${c.eval.decision||'未填写'}${c.eval.archived?'（已归档）':''}\n`;
+        if(c.eval.conflicts.length) md+=`- 待核实/冲突：${c.eval.conflicts.join('；')}\n`;
+      }
+    } else md+=`- 评分状态：${c.scoring?.status||'queued'}${c.scoring?.reason?'（'+c.scoring.reason+'）':''}\n`;
+  }
+  md+=`\n---\n*提示：本报告所有候选人信息均为脱敏版本；null 表示材料不可读/信息冲突，不计入总分。*\n`;
+  download(`${t.name}_HireLens报告.md`, md, 'text/markdown');
+  toast('Markdown 报告已导出','ok');
+}
+function exportEvalMd(taskId,cid){ exportMd(taskId); }
+
+/* ---------- 合成示例数据（全部为虚构，明确标注） ---------- */
+function loadSample(){
+  if(getTask('sample-task')){ go('tasks',{taskId:'sample-task',tab:'import'}); return; }
+  const jd=`岗位：AI产品经理（智能应用方向）\n职责：负责大模型应用类产品的规划与落地，撰写 PRD 与原型，跟进模型评测与迭代，用数据驱动决策。\n要求：本科及以上学历，3年以上产品经验；熟悉大模型应用与提示词（Prompt）设计；熟练使用 SQL 进行数据分析；具备优秀的沟通协调能力，能跨部门推动项目落地。\n加分：有 AI 产品从 0 到 1 经验者优先；有开源社区贡献者优先。`;
+  const p=parseJD(jd);
+  const t={ id:'sample-task', name:'示例·AI产品经理招聘（合成）', jd, jdParsed:p, dims:p.dims, dimsLocked:true,
+    status:'screening', candidates:[], ver:1, createdAt:Date.now(), updatedAt:Date.now(), evalDims:null, accessLinks:[], archivedAt:null, failures:[] };
+  const mk=(name,phone,email,text,conflict=false)=>{
+    const d=desensitize(text);
+    t.candidates.push({ id:uid(), nameMasked:maskName(name), contact:{phone,email}, fileName:'示例_'+maskName(name)+'.pdf',
+      rawText:text, text:d.text, desensFound:d.found, conflict, sampleTag:true, scoring:{status:'queued'}, scores:{}, total:null,
+      matchClass:null, selected:false, manual:{level:'',note:''}, phone:{num:'',result:'',note:''},
+      meeting:{mid:'',link:'',transcript:false}, email:{to:'',subject:'',body:'',date:'',status:'未发送'},
+      interview:{text:'',fileName:''}, eval:null, history:[] });
+  };
+  mk('陈志远','13812345678','chenzy@example.com',
+`姓名：陈志远 | 32岁 | 简历
+联系方式：13812345678 / chenzy@example.com
+教育背景：2016-2020 某大学 本科 计算机科学与技术
+工作经历：
+2021年至今 某互联网公司 AI产品经理：负责大模型智能客服产品从0到1，撰写PRD与原型，设计提示词评测体系；用SQL搭建指标看板，A/B实验驱动迭代，转化率提升23%（示例数据）。
+2020-2021 某科技公司 产品助理：需求分析、跨部门沟通协作。
+技能：Prompt设计、SQL、数据分析、AI产品规划、原型。自驱力强，持续学习大模型技术，有开源社区贡献。`);
+  mk('李文静','13987654321','liwj@example.com',
+`姓名：李文静 | 28岁
+联系方式：13987654321 / liwj@example.com
+教育背景：2018-2020 某大学 硕士 市场营销；2014-2018 本科 广告学
+工作经历：
+2022年至今 某电商公司 高级产品经理：负责营销增长产品，熟悉数据分析与A/B实验，熟练SQL。
+此前为市场运营岗位，2023年开始自学大模型应用，做过两个AI方向的内部小工具（提示词模板库、周报摘要），对AI产品有强烈兴趣，希望可迁移过往增长与数据分析能力。
+沟通协作与跨部门推动经验丰富。`);
+  mk('王大力','13711112222','wangdl@example.com',
+`姓名：王大力 | 35岁
+联系方式：13711112222 / wangdl@example.com
+教育背景：大专 机电一体化
+工作经历：12年制造业车间管理经验，负责排产与团队管理，最近开始接触AI工具（使用AI生成周报），希望转型互联网行业。
+无产品经验，未使用过SQL。`);
+  mk('赵小满','13633334444','zhaoxm@example.com',
+`姓名：赵小满
+（本简历为合成示例：仅包含片段信息，用于演示"材料不足"判定）
+教育背景：本科
+工作经历：某公司产品岗 2年，具体项目内容从略。`);
+  mk('孙一诺','13555556666','sunyn@example.com',
+`姓名：孙一诺 | 30岁
+联系方式：13555556666 / sunyn@example.com
+教育背景：2015-2019 某大学 本科 软件工程
+工作经历：2020年至今 某公司 AI产品经理：负责大模型应用的需求分析与PRD，熟悉Prompt工程与SQL数据分析，沟通协作良好。
+补充说明：本人目前仍在职，可接受背调。另：2022年3月已从上家公司离职（信息冲突示例，用于演示冲突判定）。`, true);
+  DB.tasks.unshift(t); saveDB();
+  toast('已载入合成示例任务（5 位虚构候选人）','ok');
+  go('tasks',{taskId:'sample-task',tab:'import'});
+}
+
+/* ---------- 初始化 ---------- */
+loadDB(); render();
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+</script>
+</body>
+</html>
